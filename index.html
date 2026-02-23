@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0a0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="StudIA">
+<meta name="description" content="Ton assistant étudiant IA">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>StudIA</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:ital,wght@0,300;0,500;1,300&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg: #0a0a0f;
+  --bg1: #0f0f1a;
+  --bg2: #141428;
+  --card: #13131f;
+  --card2: #1a1a2e;
+  --border: rgba(255,255,255,0.06);
+  --border2: rgba(255,255,255,0.12);
+  --text: #e8e8f0;
+  --text2: #8888aa;
+  --text3: #4a4a6a;
+  --accent: #5b6af0;
+  --accent2: #7c8bff;
+  --accent-glow: rgba(91,106,240,0.3);
+  --green: #22d3a0;
+  --green-glow: rgba(34,211,160,0.2);
+  --orange: #f0864a;
+  --red: #f05a6e;
+  --yellow: #f0c040;
+  --r: 12px;
+  --r2: 20px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: 'Syne', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── NOISE OVERLAY ─────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.4;
+}
+
+/* ─── LAYOUT ─────────────────────────── */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-width: 430px;
+  margin: 0 auto;
+  position: relative;
+}
+
+/* ─── HEADER ─────────────────────────── */
+.header {
+  padding: 52px 24px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.logo {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, var(--accent2), var(--green));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.api-pill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--card);
+}
+.api-pill.connected { border-color: var(--green); color: var(--green); background: var(--green-glow); }
+.api-pill:hover { border-color: var(--accent2); color: var(--accent2); }
+
+/* ─── NAV ────────────────────────────── */
+.nav {
+  display: flex;
+  padding: 0 24px;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-bottom: 16px;
+}
+
+.nav-btn {
+  flex: 1;
+  padding: 8px 4px;
+  border: none;
+  background: transparent;
+  color: var(--text3);
+  font-family: 'Syne', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: var(--r);
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.nav-btn .icon { font-size: 18px; }
+.nav-btn.active {
+  background: var(--card2);
+  color: var(--accent2);
+}
+.nav-btn:hover:not(.active) { color: var(--text2); background: rgba(255,255,255,0.03); }
+
+/* ─── MAIN SCROLL ────────────────────── */
+.main {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 0 20px 100px;
+}
+.main::-webkit-scrollbar { display: none; }
+
+/* ─── PAGES ──────────────────────────── */
+.page { display: none; animation: fadeUp 0.3s ease; }
+.page.active { display: block; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── SECTION TITLE ──────────────────── */
+.section-title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin: 20px 0 12px;
+}
+
+/* ─── CARD ───────────────────────────── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r2);
+  padding: 20px;
+  margin-bottom: 12px;
+  transition: border-color 0.2s;
+}
+.card:hover { border-color: var(--border2); }
+
+/* ─── DASHBOARD ──────────────────────── */
+.greeting {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  margin-bottom: 4px;
+}
+.greeting span { background: linear-gradient(135deg, var(--accent2), var(--green)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+.date-line {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text2);
+  margin-bottom: 24px;
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r2);
+  padding: 16px 14px;
+  text-align: center;
+  transition: all 0.2s;
+}
+.stat-card:hover { border-color: var(--border2); transform: translateY(-1px); }
+.stat-num {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  background: linear-gradient(135deg, var(--accent2), var(--green));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.stat-label { font-size: 10px; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+.devoir-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.devoir-item:last-child { border-bottom: none; }
+.devoir-item:hover { opacity: 0.8; }
+
+.devoir-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+.dot-red { background: var(--red); box-shadow: 0 0 8px var(--red); }
+.dot-orange { background: var(--orange); box-shadow: 0 0 8px var(--orange); }
+.dot-green { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.dot-blue { background: var(--accent2); box-shadow: 0 0 8px var(--accent2); }
+
+.devoir-info { flex: 1; }
+.devoir-matiere { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); }
+.devoir-titre { font-size: 15px; font-weight: 600; margin: 2px 0; }
+.devoir-date { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text2); }
+
+.devoir-ia-btn {
+  padding: 6px 12px;
+  border-radius: 99px;
+  background: var(--accent-glow);
+  border: 1px solid var(--accent);
+  color: var(--accent2);
+  font-family: 'Syne', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.devoir-ia-btn:hover { background: var(--accent); color: white; }
+
+/* ─── IA PAGE ────────────────────────── */
+.ia-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.ia-tabs::-webkit-scrollbar { display: none; }
+
+.ia-tab {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  border-radius: 99px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--text2);
+  font-family: 'Syne', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.ia-tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+.ia-tab:hover:not(.active) { border-color: var(--accent2); color: var(--accent2); }
+
+.ia-panel { display: none; }
+.ia-panel.active { display: block; }
+
+.ia-input-group { margin-bottom: 12px; }
+.ia-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text3);
+  margin-bottom: 8px;
+  display: block;
+}
+
+textarea, input[type="text"] {
+  width: 100%;
+  background: var(--bg1);
+  border: 1px solid var(--border2);
+  border-radius: var(--r);
+  padding: 14px 16px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  -webkit-appearance: none;
+}
+textarea:focus, input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+textarea::placeholder, input::placeholder { color: var(--text3); }
+
+.btn-primary {
+  width: 100%;
+  padding: 16px;
+  border-radius: var(--r);
+  border: none;
+  background: linear-gradient(135deg, var(--accent), #7c3aed);
+  color: white;
+  font-family: 'Syne', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.3px;
+  position: relative;
+  overflow: hidden;
+}
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.btn-primary:hover::before { opacity: 1; }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 25px var(--accent-glow); }
+.btn-primary:active { transform: translateY(0); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+/* ─── AI RESULT ──────────────────────── */
+.ai-result {
+  background: var(--bg1);
+  border: 1px solid var(--border2);
+  border-radius: var(--r2);
+  padding: 20px;
+  margin-top: 16px;
+  display: none;
+  animation: fadeUp 0.4s ease;
+  position: relative;
+}
+.ai-result.visible { display: block; }
+
+.ai-result-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.ai-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--accent-glow);
+  border: 1px solid var(--accent);
+  color: var(--accent2);
+}
+.ai-result-label { font-size: 13px; font-weight: 600; color: var(--text2); }
+
+.ai-result-text {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
+.ai-result-text .step {
+  color: var(--accent2);
+  font-weight: 500;
+}
+
+/* Streaming cursor */
+@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+.cursor { display: inline-block; width: 2px; height: 14px; background: var(--accent2); vertical-align: middle; margin-left: 2px; animation: blink 0.8s infinite; }
+
+/* ─── AGENDA ─────────────────────────── */
+.agenda-add {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.agenda-add input { flex: 1; }
+.btn-add {
+  padding: 0 18px;
+  border-radius: var(--r);
+  border: 1px solid var(--accent);
+  background: var(--accent-glow);
+  color: var(--accent2);
+  font-family: 'Syne', sans-serif;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.btn-add:hover { background: var(--accent); color: white; }
+
+.agenda-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  margin-bottom: 8px;
+  transition: all 0.2s;
+  animation: fadeUp 0.3s ease;
+}
+.agenda-item.done { opacity: 0.4; }
+.agenda-item.done .agenda-text { text-decoration: line-through; }
+
+.check-btn {
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  border: 2px solid var(--border2);
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  color: transparent;
+  font-size: 12px;
+}
+.check-btn.checked { background: var(--green); border-color: var(--green); color: white; box-shadow: 0 0 10px var(--green-glow); }
+
+.agenda-text { flex: 1; font-size: 14px; font-weight: 500; }
+.agenda-meta { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text3); }
+
+.del-btn {
+  width: 24px; height: 24px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text3);
+  cursor: pointer;
+  font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+}
+.del-btn:hover { background: rgba(240,90,110,0.15); color: var(--red); }
+
+/* ─── FICHES ─────────────────────────── */
+.fiche-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r2);
+  padding: 20px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.fiche-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 4px; height: 100%;
+  border-radius: 4px 0 0 4px;
+}
+.fiche-card.c-blue::before { background: var(--accent2); }
+.fiche-card.c-green::before { background: var(--green); }
+.fiche-card.c-orange::before { background: var(--orange); }
+.fiche-card.c-red::before { background: var(--red); }
+
+.fiche-card:hover { border-color: var(--border2); transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+
+.fiche-tag {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text3);
+  margin-bottom: 6px;
+}
+.fiche-titre { font-size: 17px; font-weight: 700; margin-bottom: 8px; }
+.fiche-preview {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text2);
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.fiche-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+}
+.fiche-date { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text3); }
+
+/* ─── MODAL ──────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  backdrop-filter: blur(8px);
+  z-index: 500;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 20px;
+}
+.modal-overlay.open { display: flex; animation: fadeIn 0.2s ease; }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.modal {
+  background: var(--bg1);
+  border: 1px solid var(--border2);
+  border-radius: var(--r2) var(--r2) var(--r) var(--r);
+  width: 100%;
+  max-width: 430px;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 24px;
+  animation: slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+@keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+.modal-handle { width: 40px; height: 4px; background: var(--border2); border-radius: 2px; margin: 0 auto 20px; }
+.modal-title { font-size: 20px; font-weight: 800; margin-bottom: 16px; }
+.modal-close {
+  position: absolute;
+  top: 20px; right: 20px;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border2);
+  background: var(--card);
+  color: var(--text2);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+}
+.modal-close:hover { background: var(--card2); color: var(--text); }
+
+.modal-body {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
+/* ─── API KEY MODAL ──────────────────── */
+.api-modal {
+  background: var(--bg1);
+  border: 1px solid var(--border2);
+  border-radius: var(--r2);
+  width: 100%;
+  max-width: 430px;
+  padding: 32px 24px;
+  animation: slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  position: relative;
+}
+.api-logo {
+  font-size: 32px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--accent2), var(--green));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 8px;
+}
+.api-desc { font-size: 13px; color: var(--text2); line-height: 1.6; margin-bottom: 24px; }
+.api-desc a { color: var(--accent2); text-decoration: none; }
+
+/* ─── EMPTY STATE ────────────────────── */
+.empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text3);
+}
+.empty-icon { font-size: 40px; margin-bottom: 12px; }
+.empty-text { font-size: 14px; }
+
+/* ─── PROGRESS BAR ───────────────────── */
+.progress-bar {
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  margin-top: 16px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--green));
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+/* ─── BOTTOM NAV ─────────────────────── */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 430px;
+  padding: 12px 20px 28px;
+  background: linear-gradient(to top, var(--bg) 60%, transparent);
+  display: flex;
+  justify-content: space-around;
+  z-index: 100;
+}
+
+.bottom-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 8px 16px;
+  border-radius: var(--r);
+}
+.bottom-btn .b-icon { font-size: 22px; transition: transform 0.2s; }
+.bottom-btn .b-label { font-family: 'Syne', sans-serif; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); transition: color 0.2s; }
+.bottom-btn.active .b-icon { transform: scale(1.1); filter: drop-shadow(0 0 6px var(--accent2)); }
+.bottom-btn.active .b-label { color: var(--accent2); }
+.bottom-btn:hover:not(.active) .b-label { color: var(--text2); }
+
+/* ─── LOADING DOTS ───────────────────── */
+.loading-dots { display: inline-flex; gap: 4px; align-items: center; }
+.loading-dots span {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--accent2);
+  animation: dot-bounce 1.2s infinite ease-in-out;
+}
+.loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+.loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes dot-bounce { 0%,80%,100% { transform: scale(0.7); opacity: 0.5; } 40% { transform: scale(1); opacity: 1; } }
+
+/* ─── RÉSUMÉ BADGE ───────────────────── */
+.resume-pill {
+  display: inline-block;
+  background: linear-gradient(135deg, var(--accent-glow), var(--green-glow));
+  border: 1px solid var(--accent);
+  border-radius: 99px;
+  padding: 6px 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--green);
+  margin-top: 10px;
+}
+
+/* ─── DARK MODE SCROLLBAR ────────────── */
+* { scrollbar-width: thin; scrollbar-color: var(--bg2) transparent; }
+*::-webkit-scrollbar { width: 4px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: var(--bg2); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- API KEY MODAL -->
+<div class="modal-overlay" id="apiModal" style="align-items:center;">
+  <div class="api-modal">
+    <div class="api-logo">StudIA</div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.6">
+      Entre ta clé API Anthropic pour activer les fonctionnalités IA.<br>
+      <a href="https://console.anthropic.com" target="_blank">→ Obtenir une clé gratuite</a>
+    </p>
+    <label class="ia-label">Clé API</label>
+    <input type="text" id="apiKeyInput" placeholder="sk-ant-api03-..." style="margin-bottom:12px;font-size:12px;">
+    <button class="btn-primary" onclick="saveApiKey()">Activer l'IA ✦</button>
+    <p style="font-size:11px;color:var(--text3);margin-top:12px;text-align:center;">
+      Clé stockée localement sur ton appareil uniquement
+    </p>
+  </div>
+</div>
+
+<!-- FICHE MODAL -->
+<div class="modal-overlay" id="ficheModal">
+  <div class="modal" style="position:relative;">
+    <div class="modal-handle"></div>
+    <button class="modal-close" onclick="closeFicheModal()">✕</button>
+    <div class="modal-title" id="ficheModalTitle">Titre</div>
+    <div class="modal-body" id="ficheModalBody"></div>
+  </div>
+</div>
+
+<div class="app">
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo">StudIA ✦</div>
+    <div class="header-right">
+      <button class="api-pill" id="apiPill" onclick="openApiModal()">
+        <span id="apiStatus">⚡ Config IA</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main" id="main">
+
+    <!-- ── PAGE : DASHBOARD ── -->
+    <div class="page active" id="page-home">
+      <div class="greeting">Bonsoir,<br><span id="greetName">Étudiant·e</span> 👾</div>
+      <div class="date-line" id="dateDisplay">—</div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-num" id="stat-devoirs">0</div>
+          <div class="stat-label">Devoirs</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="stat-fiches">0</div>
+          <div class="stat-label">Fiches</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="stat-done">0%</div>
+          <div class="stat-label">Fait</div>
+        </div>
+      </div>
+
+      <div class="section-title">Prochains devoirs</div>
+      <div class="card" id="devoirsList">
+        <div class="empty"><div class="empty-icon">📚</div><div class="empty-text">Aucun devoir — ajoutes-en depuis Agenda</div></div>
+      </div>
+    </div>
+
+    <!-- ── PAGE : IA ── -->
+    <div class="page" id="page-ia">
+      <div style="font-size:22px;font-weight:800;letter-spacing:-0.5px;margin-bottom:6px;">Assistant IA <span style="color:var(--accent2)">✦</span></div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:20px;">Powered by Claude · Anthropic</p>
+
+      <div class="ia-tabs">
+        <button class="ia-tab active" onclick="switchIaTab('expliquer', this)">🧩 Expliquer</button>
+        <button class="ia-tab" onclick="switchIaTab('corriger', this)">✅ Corriger</button>
+        <button class="ia-tab" onclick="switchIaTab('resumer', this)">⚡ Résumer</button>
+        <button class="ia-tab" onclick="switchIaTab('fiche', this)">📋 Fiche</button>
+      </div>
+
+      <!-- EXPLIQUER -->
+      <div class="ia-panel active" id="panel-expliquer">
+        <div class="ia-input-group">
+          <label class="ia-label">Matière</label>
+          <input type="text" id="exp-matiere" placeholder="ex: Mathématiques, Physique...">
+        </div>
+        <div class="ia-input-group" style="margin-top:10px;">
+          <label class="ia-label">Exercice ou question</label>
+          <textarea id="exp-exo" rows="5" placeholder="Colle ici ton exercice ou décris ce que tu ne comprends pas..."></textarea>
+        </div>
+        <button class="btn-primary" onclick="callIA('expliquer')" id="btn-expliquer">
+          🧩 Expliquer pas-à-pas
+        </button>
+        <div class="ai-result" id="result-expliquer">
+          <div class="ai-result-header">
+            <span class="ai-badge">CLAUDE</span>
+            <span class="ai-result-label">Explication pas-à-pas</span>
+          </div>
+          <div class="ai-result-text" id="text-expliquer"></div>
+        </div>
+      </div>
+
+      <!-- CORRIGER -->
+      <div class="ia-panel" id="panel-corriger">
+        <div class="ia-input-group">
+          <label class="ia-label">Ta réponse à corriger</label>
+          <textarea id="cor-reponse" rows="4" placeholder="Écris ta réponse ici..."></textarea>
+        </div>
+        <div class="ia-input-group" style="margin-top:10px;">
+          <label class="ia-label">Contexte / Question originale</label>
+          <textarea id="cor-question" rows="3" placeholder="Quelle était la question ?"></textarea>
+        </div>
+        <button class="btn-primary" onclick="callIA('corriger')" id="btn-corriger">
+          ✅ Corriger & Feedback
+        </button>
+        <div class="ai-result" id="result-corriger">
+          <div class="ai-result-header">
+            <span class="ai-badge">CLAUDE</span>
+            <span class="ai-result-label">Correction & Feedback</span>
+          </div>
+          <div class="ai-result-text" id="text-corriger"></div>
+        </div>
+      </div>
+
+      <!-- RÉSUMER -->
+      <div class="ia-panel" id="panel-resumer">
+        <div class="ia-input-group">
+          <label class="ia-label">Cours à résumer</label>
+          <textarea id="res-cours" rows="8" placeholder="Colle ton cours ici (aussi long que tu veux)..."></textarea>
+        </div>
+        <button class="btn-primary" onclick="callIA('resumer')" id="btn-resumer">
+          ⚡ Résumer en 1 phrase + points clés
+        </button>
+        <div class="ai-result" id="result-resumer">
+          <div class="ai-result-header">
+            <span class="ai-badge">CLAUDE</span>
+            <span class="ai-result-label">Résumé</span>
+          </div>
+          <div class="ai-result-text" id="text-resumer"></div>
+        </div>
+      </div>
+
+      <!-- FICHE -->
+      <div class="ia-panel" id="panel-fiche">
+        <div class="ia-input-group">
+          <label class="ia-label">Matière</label>
+          <input type="text" id="fiche-matiere" placeholder="ex: Histoire, Chimie...">
+        </div>
+        <div class="ia-input-group" style="margin-top:10px;">
+          <label class="ia-label">Sujet / Chapitre</label>
+          <input type="text" id="fiche-sujet" placeholder="ex: La Révolution Française, Les alcènes...">
+        </div>
+        <div class="ia-input-group" style="margin-top:10px;">
+          <label class="ia-label">Contenu source (optionnel)</label>
+          <textarea id="fiche-contenu" rows="4" placeholder="Cours ou notes à transformer en fiche..."></textarea>
+        </div>
+        <button class="btn-primary" onclick="callIA('fiche')" id="btn-fiche">
+          📋 Générer la fiche
+        </button>
+        <div class="ai-result" id="result-fiche">
+          <div class="ai-result-header">
+            <span class="ai-badge">CLAUDE</span>
+            <span class="ai-result-label">Fiche de révision</span>
+            <button onclick="saveFicheIA()" style="margin-left:auto;padding:4px 12px;border-radius:99px;border:1px solid var(--green);background:var(--green-glow);color:var(--green);font-family:'Syne',sans-serif;font-size:11px;font-weight:600;cursor:pointer;" id="saveFicheBtn">💾 Sauvegarder</button>
+          </div>
+          <div class="ai-result-text" id="text-fiche"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PAGE : AGENDA ── -->
+    <div class="page" id="page-agenda">
+      <div style="font-size:22px;font-weight:800;letter-spacing:-0.5px;margin-bottom:20px;">Agenda & Devoirs</div>
+
+      <div class="agenda-add">
+        <input type="text" id="agendaInput" placeholder="Ajouter un devoir..." onkeydown="if(event.key==='Enter')addAgenda()">
+        <button class="btn-add" onclick="addAgendaModal()">+</button>
+      </div>
+
+      <!-- Add form -->
+      <div class="card" id="addForm" style="display:none;margin-bottom:16px;animation:fadeUp 0.3s ease;">
+        <div class="ia-input-group">
+          <label class="ia-label">Matière</label>
+          <input type="text" id="form-matiere" placeholder="Mathématiques...">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+          <div>
+            <label class="ia-label">Date limite</label>
+            <input type="date" id="form-date">
+          </div>
+          <div>
+            <label class="ia-label">Priorité</label>
+            <select id="form-prio" style="width:100%;background:var(--bg1);border:1px solid var(--border2);border-radius:var(--r);padding:14px 12px;color:var(--text);font-family:'Syne',sans-serif;font-size:13px;-webkit-appearance:none;">
+              <option value="red">🔴 Urgent</option>
+              <option value="orange" selected>🟠 Normal</option>
+              <option value="green">🟢 Faible</option>
+              <option value="blue">🔵 Projet</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <button class="btn-primary" style="flex:1;" onclick="confirmAdd()">Ajouter</button>
+          <button onclick="cancelAdd()" style="flex:1;padding:16px;border-radius:var(--r);border:1px solid var(--border2);background:transparent;color:var(--text2);font-family:'Syne',sans-serif;font-size:14px;font-weight:600;cursor:pointer;">Annuler</button>
+        </div>
+      </div>
+
+      <div id="agendaList">
+        <div class="empty"><div class="empty-icon">✏️</div><div class="empty-text">Aucun devoir ajouté</div></div>
+      </div>
+    </div>
+
+    <!-- ── PAGE : FICHES ── -->
+    <div class="page" id="page-fiches">
+      <div style="font-size:22px;font-weight:800;letter-spacing:-0.5px;margin-bottom:20px;">Mes Fiches</div>
+      <div id="fichesList">
+        <div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Génère tes premières fiches depuis l'IA</div></div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav">
+    <button class="bottom-btn active" onclick="navigate('home', this)">
+      <span class="b-icon">🏠</span>
+      <span class="b-label">Accueil</span>
+    </button>
+    <button class="bottom-btn" onclick="navigate('ia', this)">
+      <span class="b-icon">✦</span>
+      <span class="b-label">IA</span>
+    </button>
+    <button class="bottom-btn" onclick="navigate('agenda', this)">
+      <span class="b-icon">📅</span>
+      <span class="b-label">Agenda</span>
+    </button>
+    <button class="bottom-btn" onclick="navigate('fiches', this)">
+      <span class="b-icon">📋</span>
+      <span class="b-label">Fiches</span>
+    </button>
+  </div>
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────
+let API_KEY = localStorage.getItem('studia_apikey') || '';
+let devoirs = JSON.parse(localStorage.getItem('studia_devoirs') || '[]');
+let fiches = JSON.parse(localStorage.getItem('studia_fiches') || '[]');
+let lastFicheIA = null;
+
+// ─── INIT ─────────────────────────────────────────────────────────────
+function init() {
+  // Date & greeting
+  const now = new Date();
+  const hour = now.getHours();
+  const greet = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
+  document.querySelector('.greeting').innerHTML = `${greet},<br><span id="greetName">Étudiant·e</span> ${hour < 12 ? '☀️' : hour < 18 ? '⚡' : '👾'}`;
+  
+  const days = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+  const months = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+  document.getElementById('dateDisplay').textContent = `${days[now.getDay()]} ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+  document.getElementById('form-date').min = now.toISOString().split('T')[0];
+
+  // API pill
+  updateApiPill();
+
+  // Render
+  renderDashboard();
+  renderAgenda();
+  renderFiches();
+
+  // Show API modal if no key
+  if (!API_KEY) {
+    setTimeout(() => document.getElementById('apiModal').classList.add('open'), 600);
+  }
+}
+
+// ─── API KEY ──────────────────────────────────────────────────────────
+function saveApiKey() {
+  const k = document.getElementById('apiKeyInput').value.trim();
+  if (!k.startsWith('sk-ant')) { alert('Clé invalide (doit commencer par sk-ant...)'); return; }
+  API_KEY = k;
+  localStorage.setItem('studia_apikey', k);
+  document.getElementById('apiModal').classList.remove('open');
+  updateApiPill();
+}
+function updateApiPill() {
+  const pill = document.getElementById('apiPill');
+  const status = document.getElementById('apiStatus');
+  if (API_KEY) {
+    pill.classList.add('connected');
+    status.textContent = '● IA activée';
+  } else {
+    pill.classList.remove('connected');
+    status.textContent = '⚡ Config IA';
+  }
+}
+function openApiModal() {
+  document.getElementById('apiKeyInput').value = API_KEY;
+  document.getElementById('apiModal').classList.add('open');
+}
+
+// ─── NAVIGATION ───────────────────────────────────────────────────────
+function navigate(page, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.bottom-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  btn.classList.add('active');
+  document.getElementById('main').scrollTop = 0;
+}
+
+// ─── IA TABS ──────────────────────────────────────────────────────────
+function switchIaTab(name, btn) {
+  document.querySelectorAll('.ia-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.ia-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ─── AI CALL ──────────────────────────────────────────────────────────
+async function callIA(type) {
+  if (!API_KEY) { openApiModal(); return; }
+
+  let prompt = '';
+  const btnId = 'btn-' + type;
+  const resultId = 'result-' + type;
+  const textId = 'text-' + type;
+
+  // Build prompt
+  if (type === 'expliquer') {
+    const matiere = document.getElementById('exp-matiere').value;
+    const exo = document.getElementById('exp-exo').value;
+    if (!exo.trim()) { alert('Décris d\'abord l\'exercice !'); return; }
+    prompt = `Tu es un professeur bienveillant et pédagogue. Explique-moi cet exercice de ${matiere || 'cours'} étape par étape, de façon claire et structurée. Utilise des emojis pour chaque étape. Termine par un conseil mémo.\n\nExercice :\n${exo}`;
+  } else if (type === 'corriger') {
+    const rep = document.getElementById('cor-reponse').value;
+    const q = document.getElementById('cor-question').value;
+    if (!rep.trim()) { alert('Écris ta réponse à corriger !'); return; }
+    prompt = `Tu es un correcteur bienveillant. Analyse cette réponse, donne un feedback constructif avec ✅ pour ce qui est bien, ❌ pour les erreurs, et 💡 pour les suggestions d'amélioration. Note sur 20.\n\nQuestion : ${q || '(non fournie)'}\nRéponse : ${rep}`;
+  } else if (type === 'resumer') {
+    const cours = document.getElementById('res-cours').value;
+    if (!cours.trim()) { alert('Colle ton cours !'); return; }
+    prompt = `Résume ce cours en DEUX parties :\n1. UNE SEULE phrase qui capture l'essentiel (commence par "💡 En résumé :")\n2. Les 5 points clés à retenir (commence chaque point par un emoji pertinent)\n\nCours :\n${cours}`;
+  } else if (type === 'fiche') {
+    const mat = document.getElementById('fiche-matiere').value;
+    const sujet = document.getElementById('fiche-sujet').value;
+    const contenu = document.getElementById('fiche-contenu').value;
+    if (!sujet.trim()) { alert('Indique le sujet !'); return; }
+    prompt = `Génère une fiche de révision structurée et complète sur : ${sujet} (${mat || 'cours'}).\n${contenu ? 'Basé sur ce contenu :\n' + contenu : ''}\n\nStructure : 📌 Définition, 🧠 Concepts clés, 📐 Formules/Dates importantes, 💡 Mémo astuce, ❓ Question type d'exam avec réponse courte.`;
+  }
+
+  // UI loading
+  const btn = document.getElementById(btnId);
+  const result = document.getElementById(resultId);
+  const textEl = document.getElementById(textId);
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading-dots"><span></span><span></span><span></span></span>';
+  result.classList.remove('visible');
+  textEl.textContent = '';
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1200,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error?.message || 'Erreur API');
+    }
+
+    const data = await response.json();
+    const text = data.content[0].text;
+
+    // Show result with typing effect
+    result.classList.add('visible');
+    await typeText(textEl, text);
+
+    // Store for fiche save
+    if (type === 'fiche') {
+      lastFicheIA = {
+        matiere: document.getElementById('fiche-matiere').value,
+        sujet: document.getElementById('fiche-sujet').value,
+        contenu: text
+      };
+    }
+  } catch (e) {
+    result.classList.add('visible');
+    textEl.textContent = '❌ Erreur : ' + e.message + '\n\nVérifie ta clé API dans les paramètres.';
+  }
+
+  // Restore btn
+  const labels = { expliquer: '🧩 Expliquer pas-à-pas', corriger: '✅ Corriger & Feedback', resumer: '⚡ Résumer en 1 phrase + points clés', fiche: '📋 Générer la fiche' };
+  btn.disabled = false;
+  btn.innerHTML = labels[type];
+}
+
+// Typing animation
+function typeText(el, text) {
+  return new Promise(resolve => {
+    let i = 0;
+    el.innerHTML = '<span class="cursor"></span>';
+    const interval = setInterval(() => {
+      if (i < text.length) {
+        el.textContent = text.substring(0, i + 1);
+        i++;
+        // auto scroll
+        const result = el.closest('.ai-result');
+        if (result) result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else {
+        clearInterval(interval);
+        resolve();
+      }
+    }, 8);
+  });
+}
+
+// ─── SAVE FICHE ───────────────────────────────────────────────────────
+function saveFicheIA() {
+  if (!lastFicheIA) return;
+  const colors = ['c-blue', 'c-green', 'c-orange', 'c-red'];
+  fiches.unshift({
+    id: Date.now(),
+    matiere: lastFicheIA.matiere || 'Cours',
+    titre: lastFicheIA.sujet,
+    contenu: lastFicheIA.contenu,
+    color: colors[fiches.length % 4],
+    date: new Date().toLocaleDateString('fr-FR')
+  });
+  localStorage.setItem('studia_fiches', JSON.stringify(fiches));
+  renderFiches();
+  updateStats();
+  const btn = document.getElementById('saveFicheBtn');
+  btn.textContent = '✅ Sauvegardée !';
+  btn.style.borderColor = 'var(--green)';
+  btn.style.color = 'var(--green)';
+  setTimeout(() => { btn.textContent = '💾 Sauvegarder'; btn.style.borderColor = ''; btn.style.color = ''; }, 2000);
+}
+
+// ─── AGENDA ───────────────────────────────────────────────────────────
+let pendingText = '';
+
+function addAgendaModal() {
+  pendingText = document.getElementById('agendaInput').value;
+  document.getElementById('addForm').style.display = 'block';
+  document.getElementById('agendaInput').value = '';
+  document.getElementById('form-matiere').focus();
+  setTimeout(() => document.getElementById('addForm').scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+}
+
+function cancelAdd() {
+  document.getElementById('addForm').style.display = 'none';
+}
+
+function addAgenda() {
+  const val = document.getElementById('agendaInput').value.trim();
+  if (!val) return;
+  pendingText = val;
+  addAgendaModal();
+}
+
+function confirmAdd() {
+  const titre = pendingText || document.getElementById('agendaInput').value.trim() || 'Devoir';
+  const matiere = document.getElementById('form-matiere').value || 'Général';
+  const date = document.getElementById('form-date').value;
+  const prio = document.getElementById('form-prio').value;
+
+  devoirs.push({ id: Date.now(), titre, matiere, date, prio, done: false });
+  localStorage.setItem('studia_devoirs', JSON.stringify(devoirs));
+  
+  document.getElementById('addForm').style.display = 'none';
+  document.getElementById('form-matiere').value = '';
+  document.getElementById('form-date').value = '';
+  pendingText = '';
+
+  renderAgenda();
+  renderDashboard();
+}
+
+function toggleDevoir(id) {
+  const d = devoirs.find(x => x.id === id);
+  if (d) d.done = !d.done;
+  localStorage.setItem('studia_devoirs', JSON.stringify(devoirs));
+  renderAgenda();
+  renderDashboard();
+}
+
+function deleteDevoir(id) {
+  devoirs = devoirs.filter(x => x.id !== id);
+  localStorage.setItem('studia_devoirs', JSON.stringify(devoirs));
+  renderAgenda();
+  renderDashboard();
+}
+
+function openDevoirIA(id) {
+  const d = devoirs.find(x => x.id === id);
+  if (!d) return;
+  navigate('ia', document.querySelectorAll('.bottom-btn')[1]);
+  document.getElementById('exp-matiere').value = d.matiere;
+  document.getElementById('exp-exo').value = d.titre;
+  switchIaTab('expliquer', document.querySelector('.ia-tab'));
+}
+
+function renderAgenda() {
+  const list = document.getElementById('agendaList');
+  if (!devoirs.length) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">✏️</div><div class="empty-text">Aucun devoir ajouté</div></div>';
+    return;
+  }
+  list.innerHTML = devoirs.map(d => {
+    const dateStr = d.date ? new Date(d.date + 'T12:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '';
+    return `<div class="agenda-item ${d.done ? 'done' : ''}">
+      <button class="check-btn ${d.done ? 'checked' : ''}" onclick="toggleDevoir(${d.id})">${d.done ? '✓' : ''}</button>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:1px">${d.matiere}</div>
+        <div class="agenda-text">${d.titre}</div>
+        ${dateStr ? `<div class="agenda-meta">${dateStr}</div>` : ''}
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <div class="devoir-dot dot-${d.prio}" style="margin-top:0"></div>
+        <button class="devoir-ia-btn" onclick="openDevoirIA(${d.id})">IA ✦</button>
+        <button class="del-btn" onclick="deleteDevoir(${d.id})">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────────────────
+function renderDashboard() {
+  updateStats();
+  const list = document.getElementById('devoirsList');
+  const upcoming = devoirs.filter(d => !d.done).slice(0, 5);
+  if (!upcoming.length) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">🎉</div><div class="empty-text">Tout est à jour !</div></div>';
+    return;
+  }
+  list.innerHTML = upcoming.map(d => {
+    const dateStr = d.date ? new Date(d.date + 'T12:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : 'Sans date';
+    return `<div class="devoir-item" onclick="openDevoirIA(${d.id})">
+      <div class="devoir-dot dot-${d.prio}"></div>
+      <div class="devoir-info">
+        <div class="devoir-matiere">${d.matiere}</div>
+        <div class="devoir-titre">${d.titre}</div>
+        <div class="devoir-date">→ ${dateStr}</div>
+      </div>
+      <button class="devoir-ia-btn" onclick="event.stopPropagation();openDevoirIA(${d.id})">IA ✦</button>
+    </div>`;
+  }).join('');
+}
+
+function updateStats() {
+  document.getElementById('stat-devoirs').textContent = devoirs.filter(d => !d.done).length;
+  document.getElementById('stat-fiches').textContent = fiches.length;
+  const pct = devoirs.length ? Math.round((devoirs.filter(d => d.done).length / devoirs.length) * 100) : 0;
+  document.getElementById('stat-done').textContent = pct + '%';
+}
+
+// ─── FICHES ───────────────────────────────────────────────────────────
+function renderFiches() {
+  const list = document.getElementById('fichesList');
+  if (!fiches.length) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Génère tes premières fiches depuis l\'IA</div></div>';
+    return;
+  }
+  list.innerHTML = fiches.map(f => `
+    <div class="fiche-card ${f.color}" onclick="openFiche(${f.id})">
+      <div class="fiche-tag">${f.matiere}</div>
+      <div class="fiche-titre">${f.titre}</div>
+      <div class="fiche-preview">${f.contenu}</div>
+      <div class="fiche-footer">
+        <div class="fiche-date">${f.date}</div>
+        <button onclick="event.stopPropagation();deleteFiche(${f.id})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:4px 8px;border-radius:6px;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text3)'">✕</button>
+      </div>
+    </div>`).join('');
+  document.getElementById('stat-fiches').textContent = fiches.length;
+}
+
+function openFiche(id) {
+  const f = fiches.find(x => x.id === id);
+  if (!f) return;
+  document.getElementById('ficheModalTitle').textContent = f.titre;
+  document.getElementById('ficheModalBody').textContent = f.contenu;
+  document.getElementById('ficheModal').classList.add('open');
+}
+
+function closeFicheModal() {
+  document.getElementById('ficheModal').classList.remove('open');
+}
+
+function deleteFiche(id) {
+  fiches = fiches.filter(x => x.id !== id);
+  localStorage.setItem('studia_fiches', JSON.stringify(fiches));
+  renderFiches();
+}
+
+// ─── CLOSE MODALS ON OVERLAY CLICK ───────────────────────────────────
+document.getElementById('ficheModal').parentElement.addEventListener('click', function(e) {
+  if (e.target === this) closeFicheModal();
+});
+
+// ─── SERVICE WORKER ───────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+// ─── START ────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
