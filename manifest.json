@@ -1,6 +1,6 @@
 {
-  "name": "StudIA — Assistant Étudiant IA",
-  "short_name": "StudIA",
+  "name": "Studix — Assistant Étudiant IA",
+  "short_name": "Studix",
   "description": "Ton assistant IA pour les devoirs, fiches et agenda",
   "start_url": "https://jaybi2008.github.io/studix/",
   "scope": "https://jaybi2008.github.io/studix/",
