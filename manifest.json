@@ -3,6 +3,7 @@
   "short_name": "StudIA",
   "description": "Ton assistant IA pour les devoirs, fiches et agenda",
   "start_url": "https://jaybi2008.github.io/studix/",
+  "scope": "https://jaybi2008.github.io/studix/",
   "display": "standalone",
   "background_color": "#0a0a0f",
   "theme_color": "#0a0a0f",
